@@ -3,15 +3,18 @@ import { MainLayout } from './components/layout/MainLayout';
 import { Card } from './components/common/Card';
 import { AdvancedStoryletCreator } from './components/storylets/AdvancedStoryletCreator';
 import { StoryletBrowser } from './components/browser/StoryletBrowser';
+import { ArcManager } from './components/arcs/ArcManager';
+import { VisualStoryletEditor } from './components/visual/VisualStoryletEditor';
 import { initializeEnvironment } from './utils/featureFlags';
 import { useCoreGameStore } from './stores/useCoreGameStore';
 import { useNarrativeStore } from './stores/useNarrativeStore';
 
-type AppView = 'dashboard' | 'storylets' | 'create-storylet' | 'edit-storylet';
+type AppView = 'dashboard' | 'storylets' | 'create-storylet' | 'edit-storylet' | 'arcs' | 'visual-editor';
 
 function App() {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [editingStoryletId, setEditingStoryletId] = useState<string | undefined>();
+  const [editingArcId, setEditingArcId] = useState<string | undefined>();
   
   const environment = useCoreGameStore(state => state.environment);
   const { storylets, arcs } = useNarrativeStore();
@@ -41,6 +44,21 @@ function App() {
     setEditingStoryletId(undefined);
   };
 
+  const handleEditArc = (arcId: string) => {
+    setEditingArcId(arcId);
+    setCurrentView('visual-editor');
+  };
+
+  const handleSaveArc = () => {
+    setCurrentView('arcs');
+    setEditingArcId(undefined);
+  };
+
+  const handleCancelArc = () => {
+    setCurrentView('arcs');
+    setEditingArcId(undefined);
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -52,7 +70,7 @@ function App() {
               </p>
               <div className="space-y-2 text-sm opacity-70">
                 <p>Environment: {environment}</p>
-                <p>Phase 2: Storylet Management Core</p>
+                <p>Phase 3: Visual Editor & Arc Manager</p>
               </div>
             </Card>
 
@@ -76,6 +94,18 @@ function App() {
                   onClick={() => setCurrentView('storylets')}
                 >
                   • Browse existing storylets
+                </li>
+                <li 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => setCurrentView('arcs')}
+                >
+                  • Manage story arcs
+                </li>
+                <li 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => setCurrentView('visual-editor')}
+                >
+                  • Visual storylet editor
                 </li>
                 <li className="text-base-content/50">• Manage characters (Phase 4)</li>
                 <li className="text-base-content/50">• Design clues (Phase 4)</li>
@@ -134,6 +164,22 @@ function App() {
           />
         );
 
+      case 'arcs':
+        return (
+          <ArcManager
+            onVisualEdit={handleEditArc}
+          />
+        );
+
+      case 'visual-editor':
+        return (
+          <VisualStoryletEditor
+            arcId={editingArcId}
+            onSave={handleSaveArc}
+            onCancel={handleCancelArc}
+          />
+        );
+
       default:
         return <div>Unknown view</div>;
     }
@@ -145,6 +191,8 @@ function App() {
       case 'storylets': return 'Storylets';
       case 'create-storylet': return 'Create Storylet';
       case 'edit-storylet': return 'Edit Storylet';
+      case 'arcs': return 'Story Arcs';
+      case 'visual-editor': return 'Visual Editor';
       default: return 'V13n Content Creator';
     }
   };
@@ -170,6 +218,22 @@ function App() {
                   className="font-semibold"
                 >
                   Storylets
+                </button>
+              )}
+              {currentView === 'arcs' && (
+                <button 
+                  onClick={() => setCurrentView('arcs')}
+                  className="font-semibold"
+                >
+                  Story Arcs
+                </button>
+              )}
+              {currentView === 'visual-editor' && (
+                <button 
+                  onClick={() => setCurrentView('visual-editor')}
+                  className="font-semibold"
+                >
+                  Visual Editor
                 </button>
               )}
               {(currentView === 'create-storylet' || currentView === 'edit-storylet') && (

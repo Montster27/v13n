@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { type StoryArc } from '../types/narrative';
 
 interface Storylet {
   id: string;
@@ -18,14 +19,7 @@ interface Storylet {
   updatedAt: Date;
 }
 
-interface StoryArc {
-  id: string;
-  name: string;
-  description: string;
-  storyletIds: string[];
-  startStoryletId?: string;
-  endStoryletId?: string;
-}
+// StoryArc is now imported from types/narrative.ts
 
 interface NarrativeState {
   storylets: Storylet[];
@@ -39,9 +33,10 @@ interface NarrativeState {
   deleteStorylet: (id: string) => void;
   getStorylet: (id: string) => Storylet | undefined;
   
-  addArc: (arc: Omit<StoryArc, 'id'>) => void;
-  updateArc: (id: string, updates: Partial<StoryArc>) => void;
-  deleteArc: (id: string) => void;
+  addStoryArc: (arc: Omit<StoryArc, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateStoryArc: (id: string, updates: Partial<StoryArc>) => void;
+  deleteStoryArc: (id: string) => void;
+  getArc: (id: string) => StoryArc | undefined;
   
   setCurrentStorylet: (id: string | null) => void;
   setCurrentArc: (id: string | null) => void;
@@ -74,17 +69,26 @@ export const useNarrativeStore = create<NarrativeState>((set, get) => ({
   
   getStorylet: (id) => get().storylets.find(s => s.id === id),
   
-  addArc: (arc) => set((state) => ({
-    arcs: [...state.arcs, { ...arc, id: crypto.randomUUID() }]
+  addStoryArc: (arc) => set((state) => ({
+    arcs: [...state.arcs, { 
+      ...arc, 
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }]
   })),
   
-  updateArc: (id, updates) => set((state) => ({
-    arcs: state.arcs.map(a => a.id === id ? { ...a, ...updates } : a)
+  updateStoryArc: (id, updates) => set((state) => ({
+    arcs: state.arcs.map(a => 
+      a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a
+    )
   })),
   
-  deleteArc: (id) => set((state) => ({
+  deleteStoryArc: (id) => set((state) => ({
     arcs: state.arcs.filter(a => a.id !== id)
   })),
+  
+  getArc: (id) => get().arcs.find(a => a.id === id),
   
   setCurrentStorylet: (id) => set({ currentStoryletId: id }),
   setCurrentArc: (id) => set({ currentArcId: id })
