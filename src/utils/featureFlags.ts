@@ -83,7 +83,7 @@ export const initializeEnvironment = () => {
   // Initialize feature flags
   const flags = initializeFeatureFlags();
   Object.entries(flags).forEach(([flag, enabled]) => {
-    store.setFeatureFlag(flag, enabled);
+    store.setFeatureFlag(flag, Boolean(enabled));
   });
 };
 

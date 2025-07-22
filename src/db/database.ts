@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 
 // Define the database schema interfaces
 export interface DbStorylet {
@@ -140,7 +140,7 @@ export const databaseHelpers = {
       const { data } = importedData;
       
       // Clear existing data
-      await db.transaction('rw', db.storylets, db.storyArcs, db.characters, db.clues, db.gameSaves, async () => {
+      await db.transaction('rw', [db.storylets, db.storyArcs, db.characters, db.clues, db.gameSaves], async () => {
         await Promise.all([
           db.storylets.clear(),
           db.storyArcs.clear(),
@@ -151,7 +151,7 @@ export const databaseHelpers = {
       });
 
       // Import new data
-      await db.transaction('rw', db.storylets, db.storyArcs, db.characters, db.clues, db.gameSaves, async () => {
+      await db.transaction('rw', [db.storylets, db.storyArcs, db.characters, db.clues, db.gameSaves], async () => {
         if (data.storylets) await db.storylets.bulkAdd(data.storylets);
         if (data.storyArcs) await db.storyArcs.bulkAdd(data.storyArcs);
         if (data.characters) await db.characters.bulkAdd(data.characters);
@@ -169,7 +169,7 @@ export const databaseHelpers = {
   // Clear all data
   clearAllData: async () => {
     try {
-      await db.transaction('rw', db.storylets, db.storyArcs, db.characters, db.clues, db.gameSaves, async () => {
+      await db.transaction('rw', [db.storylets, db.storyArcs, db.characters, db.clues, db.gameSaves], async () => {
         await Promise.all([
           db.storylets.clear(),
           db.storyArcs.clear(),

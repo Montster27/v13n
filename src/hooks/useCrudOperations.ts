@@ -30,12 +30,13 @@ export function useCrudOperations<T extends { id?: string }>(
     try {
       setLoading(true);
       setError(null);
-      const data = await db[tableName].toArray() as T[];
-      setItems(data);
+      const data = await db[tableName].toArray();
+      const typedData = data as unknown as T[];
+      setItems(typedData);
       
       // Sync with Zustand if store is provided
       if (zustandStore) {
-        data.forEach(item => {
+        typedData.forEach(item => {
           if (!zustandStore.items.find(i => i.id === item.id)) {
             zustandStore.add(item);
           }
@@ -59,9 +60,9 @@ export function useCrudOperations<T extends { id?: string }>(
         id: crypto.randomUUID(),
         createdAt: new Date(),
         updatedAt: new Date()
-      } as T;
+      } as unknown as T;
 
-      await db[tableName].add(newItem);
+      await db[tableName].add(newItem as any);
       setItems(prev => [...prev, newItem]);
       
       if (zustandStore) {
@@ -83,7 +84,7 @@ export function useCrudOperations<T extends { id?: string }>(
         updatedAt: new Date()
       };
 
-      await db[tableName].update(id, updatedItem);
+      await (db[tableName] as any).update(id, updatedItem);
       setItems(prev => prev.map(item => 
         item.id === id ? { ...item, ...updatedItem } : item
       ));
