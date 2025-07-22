@@ -10,6 +10,10 @@ interface Storylet {
   effects: any[];
   storyArc?: string;
   status: 'dev' | 'stage' | 'live';
+  tags?: string[];
+  priority?: number;
+  estimatedPlayTime?: number;
+  prerequisites?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

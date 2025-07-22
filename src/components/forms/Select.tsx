@@ -11,15 +11,18 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   options: SelectOption[];
 }
 
-export const Select: React.FC<SelectProps> = ({ label, error, options, className = '', ...props }) => {
+export const Select: React.FC<SelectProps> = ({ label, error, options, className = '', id, ...props }) => {
+  const inputId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
+  
   return (
     <div className="form-control w-full">
       {label && (
-        <label className="label">
+        <label className="label" htmlFor={inputId}>
           <span className="label-text">{label}</span>
         </label>
       )}
       <select 
+        id={inputId}
         className={`select select-bordered w-full ${error ? 'select-error' : ''} ${className}`}
         {...props}
       >
