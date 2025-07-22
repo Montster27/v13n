@@ -26,6 +26,7 @@ export interface StoryletNode {
     storyletId?: string;
     title: string;
     description?: string;
+    arcName?: string;
     isEntry?: boolean;
     isExit?: boolean;
   };

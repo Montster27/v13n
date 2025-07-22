@@ -136,6 +136,12 @@ export const StoryletNode: React.FC<StoryletNodeProps> = ({ node, scale }) => {
             ID: {node.data.storyletId.slice(0, 8)}...
           </div>
         )}
+        
+        {node.data.arcName && (
+          <div className="text-xs opacity-60 mt-1">
+            Arc: {node.data.arcName}
+          </div>
+        )}
       </div>
 
       {/* Output Handle */}

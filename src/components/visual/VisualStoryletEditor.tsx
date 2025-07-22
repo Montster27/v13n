@@ -41,21 +41,26 @@ export const VisualStoryletEditor: React.FC<VisualStoryletEditorProps> = ({
     getNodeById
   } = useVisualEditorStore();
 
-  const { storylets, getArc } = useNarrativeStore();
+  const { storylets, arcs, getArc } = useNarrativeStore();
 
-  // Load arc data if editing existing arc
+  // Load arc data if editing existing arc, or show all storylets if no arc
   useEffect(() => {
+    clearEditor();
+    
     if (arcId) {
       const arc = getArc(arcId);
       if (arc) {
-        // Convert storylets to nodes (simplified for now)
+        console.log('Loading arc:', arc.name, 'with ID:', arcId);
+        // Convert storylets assigned to this arc to nodes
         const arcStorylets = storylets.filter(s => s.storyArc === arcId);
-        const initialNodes = arcStorylets.map((storylet, index) => ({
+        console.log('Found storylets for arc:', arcStorylets.length);
+        
+        const storyletNodes = arcStorylets.map((storylet, index) => ({
           id: crypto.randomUUID(),
           type: 'storylet' as const,
           position: {
-            x: 200 + (index % 3) * 250,
-            y: 100 + Math.floor(index / 3) * 200
+            x: 300 + (index % 4) * 250,
+            y: 150 + Math.floor(index / 4) * 200
           },
           data: {
             storyletId: storylet.id,
@@ -68,25 +73,51 @@ export const VisualStoryletEditor: React.FC<VisualStoryletEditorProps> = ({
         const startNode = {
           id: crypto.randomUUID(),
           type: 'start' as const,
-          position: { x: 50, y: 150 },
-          data: { title: 'Start', isEntry: true }
+          position: { x: 50, y: 200 },
+          data: { title: `${arc.name} - Start`, isEntry: true }
         };
         
         const endNode = {
           id: crypto.randomUUID(),
           type: 'end' as const,
-          position: { x: 800, y: 150 },
-          data: { title: 'End', isExit: true }
+          position: { x: 800, y: 200 },
+          data: { title: `${arc.name} - End`, isExit: true }
         };
 
-        // For now, load without connections - user will create them
-        clearEditor();
-        [startNode, ...initialNodes, endNode].forEach(node => {
+        // Load all nodes
+        [startNode, ...storyletNodes, endNode].forEach(node => {
           addNode(node);
         });
+      } else {
+        console.warn('Arc not found with ID:', arcId);
       }
+    } else {
+      console.log('No arc selected, showing all storylets');
+      // Show all storylets when no specific arc is being edited
+      const allStoryletNodes = storylets.map((storylet, index) => ({
+        id: crypto.randomUUID(),
+        type: 'storylet' as const,
+        position: {
+          x: 200 + (index % 5) * 250,
+          y: 100 + Math.floor(index / 5) * 200
+        },
+        data: {
+          storyletId: storylet.id,
+          title: storylet.title,
+          description: storylet.description || 'No description',
+          arcName: storylet.storyArc ? 
+            (arcs.find(a => a.id === storylet.storyArc)?.name || 'Unknown Arc') : 
+            'No Arc'
+        }
+      }));
+      
+      console.log('Loading all storylets:', allStoryletNodes.length);
+      
+      allStoryletNodes.forEach(node => {
+        addNode(node);
+      });
     }
-  }, [arcId, storylets, getArc, addNode, clearEditor]);
+  }, [arcId, storylets, arcs, getArc, addNode, clearEditor]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (e.target === canvasRef.current || e.target === svgRef.current) {
@@ -204,6 +235,14 @@ export const VisualStoryletEditor: React.FC<VisualStoryletEditorProps> = ({
           <div className="divider divider-horizontal" />
           
           <div className="flex gap-2">
+            {!arcId && (
+              <button
+                onClick={() => window.location.reload()}
+                className="btn btn-info btn-sm"
+              >
+                Reload Storylets
+              </button>
+            )}
             <button
               onClick={autoLayout}
               className="btn btn-ghost btn-sm"
