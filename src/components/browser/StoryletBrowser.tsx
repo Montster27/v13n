@@ -88,11 +88,16 @@ export const StoryletBrowser: React.FC<StoryletBrowserProps> = ({
     return filtered;
   }, [storylets, searchTerm, filterByStatus, filterByArc, selectedTag, sortBy, sortOrder]);
 
-  const handleDelete = useCallback((storyletId: string, title: string) => {
+  const handleDelete = useCallback(async (storyletId: string, title: string) => {
     if (window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
-      deleteStorylet(storyletId);
-      if (onDelete) {
-        onDelete(storyletId);
+      try {
+        await deleteStorylet(storyletId);
+        if (onDelete) {
+          onDelete(storyletId);
+        }
+      } catch (error) {
+        console.error('Failed to delete storylet:', error);
+        // You might want to show an error message to the user here
       }
     }
   }, [deleteStorylet, onDelete]);

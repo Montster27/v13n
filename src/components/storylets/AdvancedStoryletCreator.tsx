@@ -81,22 +81,37 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
     return newErrors.length === 0;
   }, [formData]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!validateForm()) return;
 
-    const storyletData: StoryletFormData = {
-      ...formData,
-      id: storyletId || crypto.randomUUID(),
-    };
-
-    if (storyletId) {
-      updateStorylet(storyletId, storyletData);
-    } else {
-      addStorylet(storyletData);
-    }
-
-    if (onSave) {
-      onSave(storyletData);
+    try {
+      if (storyletId) {
+        // For updates, include the id
+        const storyletData: StoryletFormData = {
+          ...formData,
+          id: storyletId,
+        };
+        await updateStorylet(storyletId, storyletData);
+        if (onSave) {
+          onSave(storyletData);
+        }
+      } else {
+        // For new storylets, don't include id - let addStorylet generate it
+        const storyletData = {
+          ...formData,
+          // Convert to store's expected format
+          triggers: formData.triggers || [],
+          choices: formData.choices || [],
+          effects: formData.effects || [],
+        };
+        const newId = await addStorylet(storyletData);
+        if (onSave) {
+          onSave({ ...storyletData, id: newId });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save storylet:', error);
+      // You might want to show an error message to the user here
     }
   }, [formData, storyletId, validateForm, addStorylet, updateStorylet, onSave]);
 

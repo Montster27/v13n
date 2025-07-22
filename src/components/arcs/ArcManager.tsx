@@ -109,7 +109,7 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleSaveArc = () => {
+  const handleSaveArc = async () => {
     if (!formData.name.trim()) return;
 
     const arcData: Omit<StoryArc, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -122,17 +122,22 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
       tags: formData.tags
     };
 
-    if (editingArc) {
-      updateStoryArc(editingArc, arcData);
-    } else {
-      addStoryArc(arcData);
-    }
+    try {
+      if (editingArc) {
+        await updateStoryArc(editingArc, arcData);
+      } else {
+        await addStoryArc(arcData);
+      }
 
-    setIsModalOpen(false);
-    setFormData(initialArcForm);
+      setIsModalOpen(false);
+      setFormData(initialArcForm);
+    } catch (error) {
+      console.error('Failed to save arc:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
-  const handleDeleteArc = (arc: any) => {
+  const handleDeleteArc = async (arc: any) => {
     if (arc.storyletCount > 0) {
       if (!window.confirm(
         `Arc "${arc.name}" has ${arc.storyletCount} storylets. Deleting the arc will unassign these storylets. Continue?`
@@ -143,7 +148,12 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
       return;
     }
 
-    deleteStoryArc(arc.id);
+    try {
+      await deleteStoryArc(arc.id);
+    } catch (error) {
+      console.error('Failed to delete arc:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
   const getDifficultyBadge = (difficulty: string) => {

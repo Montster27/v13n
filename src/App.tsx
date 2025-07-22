@@ -17,12 +17,16 @@ function App() {
   const [editingArcId, setEditingArcId] = useState<string | undefined>();
   
   const environment = useCoreGameStore(state => state.environment);
-  const { storylets, arcs } = useNarrativeStore();
+  const { storylets, arcs, loadStorylets, loadStoryArcs } = useNarrativeStore();
 
   useEffect(() => {
     // Initialize environment and feature flags on app start
     initializeEnvironment();
-  }, []);
+    
+    // Load existing data from Dexie
+    loadStorylets();
+    loadStoryArcs();
+  }, [loadStorylets, loadStoryArcs]);
 
   const handleCreateStorylet = () => {
     setEditingStoryletId(undefined);
