@@ -23,7 +23,8 @@ vi.mock('../../stores/useVisualEditorStore', () => ({
     cancelConnecting: vi.fn(),
     clearEditor: vi.fn(),
     autoLayout: vi.fn(),
-    getNodeById: vi.fn()
+    getNodeById: vi.fn(),
+    createConnectionsFromStoryletChoices: vi.fn()
   })
 }));
 
@@ -51,6 +52,7 @@ describe('VisualStoryletEditor', () => {
   it('renders toolbar utility buttons', () => {
     render(<VisualStoryletEditor />);
     
+    expect(screen.getByText('Update Links')).toBeInTheDocument();
     expect(screen.getByText('Auto Layout')).toBeInTheDocument();
     expect(screen.getByText('Clear All')).toBeInTheDocument();
     expect(screen.getByText('Reset')).toBeInTheDocument();

@@ -5,11 +5,15 @@ import { AdvancedStoryletCreator } from './components/storylets/AdvancedStorylet
 import { StoryletBrowser } from './components/browser/StoryletBrowser';
 import { ArcManager } from './components/arcs/ArcManager';
 import { VisualStoryletEditor } from './components/visual/VisualStoryletEditor';
+import { CharacterManager } from './components/characters/CharacterManager';
+import { ClueManager } from './components/clues/ClueManager';
 import { initializeEnvironment } from './utils/featureFlags';
 import { useCoreGameStore } from './stores/useCoreGameStore';
 import { useNarrativeStore } from './stores/useNarrativeStore';
+import { useCharacterStore } from './stores/useCharacterStore';
+import { useClueStore } from './stores/useClueStore';
 
-type AppView = 'dashboard' | 'storylets' | 'create-storylet' | 'edit-storylet' | 'arcs' | 'visual-editor';
+type AppView = 'dashboard' | 'storylets' | 'create-storylet' | 'edit-storylet' | 'arcs' | 'visual-editor' | 'characters' | 'clues';
 
 function App() {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -18,6 +22,8 @@ function App() {
   
   const environment = useCoreGameStore(state => state.environment);
   const { storylets, arcs, loadStorylets, loadStoryArcs } = useNarrativeStore();
+  const { characters, loadCharacters } = useCharacterStore();
+  const { clues, loadClues } = useClueStore();
 
   useEffect(() => {
     // Initialize environment and feature flags on app start
@@ -26,7 +32,9 @@ function App() {
     // Load existing data from Dexie
     loadStorylets();
     loadStoryArcs();
-  }, [loadStorylets, loadStoryArcs]);
+    loadCharacters();
+    loadClues();
+  }, [loadStorylets, loadStoryArcs, loadCharacters, loadClues]);
 
   const handleCreateStorylet = () => {
     setEditingStoryletId(undefined);
@@ -111,8 +119,18 @@ function App() {
                 >
                   • Visual storylet editor
                 </li>
-                <li className="text-base-content/50">• Manage characters (Phase 4)</li>
-                <li className="text-base-content/50">• Design clues (Phase 4)</li>
+                <li 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => setCurrentView('characters')}
+                >
+                  • Manage characters
+                </li>
+                <li 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => setCurrentView('clues')}
+                >
+                  • Design clues
+                </li>
                 <li className="text-base-content/50">• Test in sandbox (Phase 5)</li>
               </ul>
             </Card>
@@ -135,8 +153,19 @@ function App() {
                 </div>
                 <div className="stat">
                   <div className="stat-title">Characters</div>
-                  <div className="stat-value text-accent">0</div>
-                  <div className="stat-desc">Coming in Phase 4</div>
+                  <div className="stat-value text-accent">{characters.length}</div>
+                  <div className="stat-desc">
+                    {characters.filter(c => c.status === 'active').length} active, {' '}
+                    {characters.filter(c => c.importance === 'critical').length} critical
+                  </div>
+                </div>
+                <div className="stat">
+                  <div className="stat-title">Clues</div>
+                  <div className="stat-value text-info">{clues.length}</div>
+                  <div className="stat-desc">
+                    {clues.filter(c => c.isDiscovered).length} discovered, {' '}
+                    {clues.filter(c => c.status === 'resolved').length} resolved
+                  </div>
                 </div>
               </div>
             </Card>
@@ -184,6 +213,16 @@ function App() {
           />
         );
 
+      case 'characters':
+        return (
+          <CharacterManager />
+        );
+
+      case 'clues':
+        return (
+          <ClueManager />
+        );
+
       default:
         return <div>Unknown view</div>;
     }
@@ -197,6 +236,8 @@ function App() {
       case 'edit-storylet': return 'Edit Storylet';
       case 'arcs': return 'Story Arcs';
       case 'visual-editor': return 'Visual Editor';
+      case 'characters': return 'Characters';
+      case 'clues': return 'Clues';
       default: return 'V13n Content Creator';
     }
   };
@@ -238,6 +279,22 @@ function App() {
                   className="font-semibold"
                 >
                   Visual Editor
+                </button>
+              )}
+              {currentView === 'characters' && (
+                <button 
+                  onClick={() => setCurrentView('characters')}
+                  className="font-semibold"
+                >
+                  Characters
+                </button>
+              )}
+              {currentView === 'clues' && (
+                <button 
+                  onClick={() => setCurrentView('clues')}
+                  className="font-semibold"
+                >
+                  Clues
                 </button>
               )}
               {(currentView === 'create-storylet' || currentView === 'edit-storylet') && (

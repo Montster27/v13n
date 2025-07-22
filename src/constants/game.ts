@@ -1,0 +1,55 @@
+// Game constants and configuration values
+
+export const INITIAL_RESOURCES = {
+  ENERGY: 100,
+  SOCIAL: 50,
+  KNOWLEDGE: 0,
+  MONEY: 100,
+  HEALTH: 100,
+  REPUTATION: 50,
+} as const;
+
+export const VALIDATION_LIMITS = {
+  TITLE_MAX_LENGTH: 100,
+  DESCRIPTION_MAX_LENGTH: 500,
+  CONTENT_MIN_LENGTH: 50,
+  STORYLET_CHOICES_MAX: 10,
+  TAGS_MAX_COUNT: 20,
+  KEYWORDS_MAX_COUNT: 50,
+} as const;
+
+export const LAYOUT = {
+  GRID_SPACING: 250,
+  NODE_SPACING_X: 200,
+  NODE_SPACING_Y: 200,
+  CANVAS_PADDING: 100,
+  TOOLBAR_HEIGHT: 60,
+} as const;
+
+export const MEMORY_CARD_GAME = {
+  DEFAULT_CARD_PAIRS: 6,
+  MIN_CARD_PAIRS: 3,
+  MAX_CARD_PAIRS: 12,
+  DEFAULT_FLIP_TIME: 1500,
+  MIN_FLIP_TIME: 500,
+  MAX_FLIP_TIME: 5000,
+} as const;
+
+export const NARRATIVE_WEIGHT = {
+  MIN: 1,
+  MAX: 10,
+  DEFAULT: 5,
+} as const;
+
+export const TIME_LIMITS = {
+  DEFAULT_STORYLET_TIME: 5, // minutes
+  SHORT_STORYLET_TIME: 2,
+  LONG_STORYLET_TIME: 15,
+  MEMORY_GAME_TIME: 120, // seconds
+} as const;
+
+export const RELATIONSHIP_BOUNDS = {
+  MIN: 0,
+  MAX: 100,
+  DEFAULT: 50,
+} as const;

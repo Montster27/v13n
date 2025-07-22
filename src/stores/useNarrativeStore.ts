@@ -46,6 +46,9 @@ interface NarrativeState {
   
   setCurrentStorylet: (id: string | null) => void;
   setCurrentArc: (id: string | null) => void;
+  
+  // Storylet execution
+  triggerStorylet: (id: string, context?: any) => Promise<void>;
 }
 
 export const useNarrativeStore = create<NarrativeState>()(subscribeWithSelector((set, get) => ({
@@ -208,5 +211,18 @@ export const useNarrativeStore = create<NarrativeState>()(subscribeWithSelector(
   },
   
   setCurrentStorylet: (id) => set({ currentStoryletId: id }),
-  setCurrentArc: (id) => set({ currentArcId: id })
+  setCurrentArc: (id) => set({ currentArcId: id }),
+  
+  // Trigger storylet execution (placeholder for now)
+  triggerStorylet: async (id, _context) => {
+    const storylet = get().getStorylet(id);
+    if (storylet) {
+      // Triggering storylet
+      // TODO: Implement actual storylet execution logic
+      // For now, just set it as current
+      set({ currentStoryletId: id });
+    } else {
+      console.warn('Storylet not found:', id);
+    }
+  }
 })));

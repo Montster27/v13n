@@ -5,9 +5,10 @@ import { useVisualEditorStore } from '../../stores/useVisualEditorStore';
 interface StoryletNodeProps {
   node: StoryletNodeType;
   scale: number;
+  onDoubleClick?: () => void;
 }
 
-export const StoryletNode: React.FC<StoryletNodeProps> = ({ node, scale }) => {
+export const StoryletNode: React.FC<StoryletNodeProps> = ({ node, scale, onDoubleClick }) => {
   const {
     selectedNode,
     connecting,
@@ -64,6 +65,14 @@ export const StoryletNode: React.FC<StoryletNodeProps> = ({ node, scale }) => {
     document.addEventListener('mouseup', handleMouseUp);
   }, [node, scale, connecting, selectNode, moveNode, finishConnecting]);
 
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDoubleClick) {
+      onDoubleClick();
+    }
+  }, [onDoubleClick]);
+
   const handleOutputClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -104,12 +113,23 @@ export const StoryletNode: React.FC<StoryletNodeProps> = ({ node, scale }) => {
         zIndex: isSelected ? 10 : 1
       }}
       onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
     >
       {/* Input Handle */}
       {node.type !== 'start' && (
         <div
-          className="absolute w-3 h-3 bg-base-content rounded-full border-2 border-base-100"
-          style={{ left: '-6px', top: '50%', transform: 'translateY(-50%)' }}
+          className={`absolute w-4 h-4 rounded-full border-2 border-base-100 transition-all duration-200 ${
+            connecting 
+              ? 'bg-accent scale-125 shadow-lg cursor-pointer' 
+              : 'bg-base-content'
+          }`}
+          style={{ left: '-8px', top: '50%', transform: 'translateY(-50%)' }}
+          onClick={connecting ? (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            finishConnecting(node.id, 'input');
+          } : undefined}
+          title={connecting ? "Click to complete connection" : "Input handle"}
         />
       )}
 
@@ -147,9 +167,14 @@ export const StoryletNode: React.FC<StoryletNodeProps> = ({ node, scale }) => {
       {/* Output Handle */}
       {node.type !== 'end' && (
         <div
-          className="absolute w-3 h-3 bg-base-content rounded-full border-2 border-base-100 cursor-pointer hover:scale-110 transition-transform"
-          style={{ right: '-6px', top: '50%', transform: 'translateY(-50%)' }}
+          className={`absolute w-4 h-4 rounded-full border-2 border-base-100 cursor-pointer transition-all duration-200 ${
+            isConnecting 
+              ? 'bg-secondary scale-125 shadow-lg' 
+              : 'bg-base-content hover:bg-secondary hover:scale-110'
+          }`}
+          style={{ right: '-8px', top: '50%', transform: 'translateY(-50%)' }}
           onClick={handleOutputClick}
+          title="Click to start connection"
         />
       )}
 

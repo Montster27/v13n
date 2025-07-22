@@ -37,7 +37,7 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'triggers' | 'choices' | 'effects'>('basic');
 
-  const { addStorylet, updateStorylet, getStorylet, arcs } = useNarrativeStore();
+  const { addStorylet, updateStorylet, getStorylet, arcs, storylets } = useNarrativeStore();
 
   // Load existing storylet if editing
   React.useEffect(() => {
@@ -85,25 +85,60 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
     if (!validateForm()) return;
 
     try {
+      // First, create any new storylets that are needed for choices
+      const updatedChoices = await Promise.all(
+        formData.choices.map(async (choice) => {
+          if (choice.createNewStorylet) {
+            // Create a new storylet for this choice
+            const newStoryletData = {
+              title: `${formData.title} - ${choice.text}`,
+              description: `Continuation from choice: ${choice.text}`,
+              content: 'This storylet was automatically created. Edit this content to define what happens next.',
+              triggers: [],
+              choices: [],
+              effects: [],
+              storyArc: formData.storyArc,
+              status: 'dev' as const,
+              tags: [...(formData.tags || []), 'auto-created'],
+              priority: formData.priority,
+              estimatedPlayTime: 5,
+              prerequisites: []
+            };
+            
+            const newStoryletId = await addStorylet(newStoryletData);
+            // Storylet created successfully
+            
+            // Update the choice to point to the new storylet
+            return {
+              ...choice,
+              nextStoryletId: newStoryletId,
+              createNewStorylet: false
+            };
+          }
+          return choice;
+        })
+      );
+
+      // Now save the main storylet with updated choices
+      const storyletData = {
+        ...formData,
+        choices: updatedChoices,
+        triggers: formData.triggers || [],
+        effects: formData.effects || [],
+      };
+
       if (storyletId) {
         // For updates, include the id
-        const storyletData: StoryletFormData = {
-          ...formData,
+        const updateData: StoryletFormData = {
+          ...storyletData,
           id: storyletId,
         };
-        await updateStorylet(storyletId, storyletData);
+        await updateStorylet(storyletId, updateData);
         if (onSave) {
-          onSave(storyletData);
+          onSave(updateData);
         }
       } else {
         // For new storylets, don't include id - let addStorylet generate it
-        const storyletData = {
-          ...formData,
-          // Convert to store's expected format
-          triggers: formData.triggers || [],
-          choices: formData.choices || [],
-          effects: formData.effects || [],
-        };
         const newId = await addStorylet(storyletData);
         if (onSave) {
           onSave({ ...storyletData, id: newId });
@@ -154,7 +189,9 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
       effects: [],
       requirements: [],
       probability: 100,
-      unlocked: true
+      unlocked: true,
+      nextStoryletId: undefined,
+      createNewStorylet: false
     };
     setFormData(prev => ({
       ...prev,
@@ -425,6 +462,51 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
                       />
                     </label>
                   </div>
+                </div>
+                
+                {/* Next Storylet Linking */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-base-content/80">Next Storylet</h4>
+                  <p className="text-xs text-base-content/60">Choose what happens when the player selects this choice</p>
+                  
+                  <Select
+                    label="Next Storylet"
+                    value={choice.nextStoryletId || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === 'CREATE_NEW') {
+                        updateChoice(choice.id, { nextStoryletId: undefined, createNewStorylet: true });
+                      } else if (value === '') {
+                        updateChoice(choice.id, { nextStoryletId: undefined, createNewStorylet: false });
+                      } else {
+                        updateChoice(choice.id, { nextStoryletId: value, createNewStorylet: false });
+                      }
+                    }}
+                    options={[
+                      { value: '', label: 'No next storylet (ends here)' },
+                      { value: 'CREATE_NEW', label: '+ Create New Storylet' },
+                      ...storylets
+                        .filter(s => s.storyArc === formData.storyArc && s.id !== storyletId)
+                        .map(s => ({ value: s.id!, label: s.title }))
+                    ]}
+                  />
+                  
+                  {choice.createNewStorylet && (
+                    <div className="alert alert-info">
+                      <span className="text-sm">
+                        📝 A new storylet will be created when you save this storylet. 
+                        You can then edit the new storylet to define its content.
+                      </span>
+                    </div>
+                  )}
+                  
+                  {choice.nextStoryletId && (
+                    <div className="alert alert-success">
+                      <span className="text-sm">
+                        🔗 This choice will lead to: <strong>{storylets.find(s => s.id === choice.nextStoryletId)?.title || 'Unknown Storylet'}</strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex justify-end">

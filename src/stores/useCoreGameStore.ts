@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { INITIAL_RESOURCES } from '../constants/game';
 
 interface GameState {
   // Core game state
@@ -39,10 +40,10 @@ interface GameState {
 }
 
 const initialResources = {
-  energy: 100,
-  social: 50,
-  knowledge: 0,
-  money: 100
+  energy: INITIAL_RESOURCES.ENERGY,
+  social: INITIAL_RESOURCES.SOCIAL,
+  knowledge: INITIAL_RESOURCES.KNOWLEDGE,
+  money: INITIAL_RESOURCES.MONEY
 };
 
 export const useCoreGameStore = create<GameState>((set, get) => ({

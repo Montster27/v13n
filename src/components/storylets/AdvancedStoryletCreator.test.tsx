@@ -12,6 +12,10 @@ vi.mock('../../stores/useNarrativeStore', () => ({
     arcs: [
       { id: 'arc1', name: 'Test Arc 1' },
       { id: 'arc2', name: 'Test Arc 2' }
+    ],
+    storylets: [
+      { id: 'storylet1', title: 'Test Storylet 1', storyArc: 'arc1' },
+      { id: 'storylet2', title: 'Test Storylet 2', storyArc: 'arc2' }
     ]
   })
 }));

@@ -17,6 +17,8 @@ export interface StoryletChoice {
   effects: StoryletEffect[];
   probability?: number;
   unlocked?: boolean;
+  nextStoryletId?: string; // Links to the next storylet when this choice is selected
+  createNewStorylet?: boolean; // Flag to indicate this choice should create a new storylet
 }
 
 export interface StoryletEffect {
