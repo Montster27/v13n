@@ -30,6 +30,24 @@ export interface StoryletEffect {
   description: string;
 }
 
+export interface Storylet {
+  id?: string;
+  title: string;
+  description: string;
+  content: string;
+  triggers: StoryletTrigger[];
+  choices: StoryletChoice[];
+  effects: StoryletEffect[];
+  storyArc?: string;
+  status: 'dev' | 'stage' | 'live';
+  tags: string[];
+  priority: number;
+  estimatedPlayTime: number;
+  prerequisites?: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface StoryletFormData {
   id?: string;
   title: string;

@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { Card } from '../common/Card';
 import { Input } from '../forms/Input';
 import { TextArea } from '../forms/TextArea';
-import { Select } from '../forms/Select';
 import { Modal } from '../common/Modal';
 import { useNarrativeStore } from '../../stores/useNarrativeStore';
 import { type StoryArc } from '../../types/narrative';
@@ -15,8 +14,6 @@ interface ArcFormData {
   id?: string;
   name: string;
   description: string;
-  category: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
   estimatedLength: number;
   prerequisites: string[];
   tags: string[];
@@ -25,9 +22,7 @@ interface ArcFormData {
 const initialArcForm: ArcFormData = {
   name: '',
   description: '',
-  category: 'main',
-  difficulty: 'beginner',
-  estimatedLength: 10,
+  estimatedLength: 30,
   prerequisites: [],
   tags: []
 };
@@ -39,7 +34,6 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
   const [editingArc, setEditingArc] = useState<string | undefined>();
   const [formData, setFormData] = useState<ArcFormData>(initialArcForm);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('all');
 
   const { 
     arcs, 
@@ -49,74 +43,56 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
     deleteStoryArc
   } = useNarrativeStore();
 
-  // Calculate arc statistics
-  const arcStats = useMemo(() => {
-    return arcs.map(arc => {
-      const arcStorylets = storylets.filter(s => s.storyArc === arc.id);
-      const completedStorylets = arcStorylets.filter(s => s.status === 'live');
-      
-      // Cast to our enhanced StoryArc type for display
-      const enhancedArc = arc as StoryArc & {
-        category?: string;
-        difficulty?: 'beginner' | 'intermediate' | 'advanced';
-        tags?: string[];
-      };
-      
-      return {
-        ...enhancedArc,
-        storyletCount: arcStorylets.length,
-        completedCount: completedStorylets.length,
-        progress: arcStorylets.length > 0 ? 
-          Math.round((completedStorylets.length / arcStorylets.length) * 100) : 0,
-        estimatedPlayTime: arcStorylets.reduce((sum, s) => 
-          sum + (s.estimatedPlayTime || 5), 0)
-      };
+
+  const filteredArcs = useMemo(() => {
+    return arcs.filter(arc => {
+      const matchesSearch = !searchTerm || 
+        arc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        arc.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (arc.tags && arc.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())));
+
+      return matchesSearch;
     });
+  }, [arcs, searchTerm]);
+
+  // Get storylets for each arc
+  const arcStoryletCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    arcs.forEach(arc => {
+      counts[arc.id] = storylets.filter(s => s.storyArc === arc.id).length;
+    });
+    return counts;
   }, [arcs, storylets]);
 
-  // Filter arcs
-  const filteredArcs = useMemo(() => {
-    return arcStats.filter(arc => {
-      const matchesSearch = searchTerm === '' || 
-        arc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        arc.description.toLowerCase().includes(searchTerm.toLowerCase());
-        
-      const matchesCategory = filterCategory === 'all' || 
-        arc.category === filterCategory;
-        
-      return matchesSearch && matchesCategory;
-    });
-  }, [arcStats, searchTerm, filterCategory]);
+  const handleOpenModal = (arc?: StoryArc) => {
+    if (arc) {
+      setEditingArc(arc.id);
+      setFormData({
+        name: arc.name,
+        description: arc.description,
+        estimatedLength: arc.estimatedLength || 30,
+        prerequisites: arc.prerequisites || [],
+        tags: arc.tags || []
+      });
+    } else {
+      setEditingArc(undefined);
+      setFormData(initialArcForm);
+    }
+    setIsModalOpen(true);
+  };
 
-  const handleCreateArc = () => {
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
     setEditingArc(undefined);
     setFormData(initialArcForm);
-    setIsModalOpen(true);
   };
 
-  const handleEditArcForm = (arc: StoryArc) => {
-    setEditingArc(arc.id);
-    setFormData({
-      id: arc.id,
-      name: arc.name,
-      description: arc.description,
-      category: arc.category || 'main',
-      difficulty: arc.difficulty || 'beginner',
-      estimatedLength: arc.estimatedLength || 10,
-      prerequisites: arc.prerequisites || [],
-      tags: arc.tags || []
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleSaveArc = async () => {
-    if (!formData.name.trim()) return;
-
-    const arcData: Omit<StoryArc, 'id' | 'createdAt' | 'updatedAt'> = {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const arcData = {
       name: formData.name,
       description: formData.description,
-      category: formData.category,
-      difficulty: formData.difficulty,
       estimatedLength: formData.estimatedLength,
       prerequisites: formData.prerequisites,
       tags: formData.tags
@@ -137,259 +113,161 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
     }
   };
 
-  const handleDeleteArc = async (arc: any) => {
-    if (arc.storyletCount > 0) {
-      if (!window.confirm(
-        `Arc "${arc.name}" has ${arc.storyletCount} storylets. Deleting the arc will unassign these storylets. Continue?`
-      )) {
-        return;
+  const handleDelete = async (arcId: string) => {
+    if (window.confirm('Are you sure you want to delete this story arc? This action cannot be undone.')) {
+      try {
+        await deleteStoryArc(arcId);
+      } catch (error) {
+        console.error('Failed to delete arc:', error);
       }
-    } else if (!window.confirm(`Delete arc "${arc.name}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      await deleteStoryArc(arc.id);
-    } catch (error) {
-      console.error('Failed to delete arc:', error);
-      // You might want to show an error message to the user here
     }
   };
 
-  const getDifficultyBadge = (difficulty: string) => {
-    const styles = {
-      beginner: 'badge-success',
-      intermediate: 'badge-warning',
-      advanced: 'badge-error'
-    };
-    return `badge ${styles[difficulty as keyof typeof styles] || 'badge-neutral'}`;
+  const handleVisualEdit = (arcId: string) => {
+    if (onVisualEdit) {
+      onVisualEdit(arcId);
+    }
   };
-
-  const getCategoryBadge = (category: string) => {
-    const styles = {
-      main: 'badge-primary',
-      side: 'badge-secondary',
-      epilogue: 'badge-accent',
-      tutorial: 'badge-info'
-    };
-    return `badge ${styles[category as keyof typeof styles] || 'badge-neutral'}`;
-  };
-
-  // Get unique categories for filter
-  const categories = useMemo(() => {
-    const categorySet = new Set(['main']);
-    arcs.forEach(arc => {
-      if (arc.category) categorySet.add(arc.category);
-    });
-    return Array.from(categorySet);
-  }, [arcs]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Arc Manager</h1>
-          <p className="text-base-content/70">
-            Organize storylets into narrative arcs and track progress
-          </p>
-        </div>
-        
-        <button onClick={handleCreateArc} className="btn btn-primary">
-          Create New Arc
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Story Arcs</h2>
+        <button 
+          onClick={() => handleOpenModal()}
+          className="btn btn-primary"
+        >
+          + Create Arc
         </button>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Search Arcs"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name or description..."
-          />
-
-          <Select
-            label="Category"
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            options={[
-              { value: 'all', label: 'All Categories' },
-              ...categories.map(cat => ({ 
-                value: cat, 
-                label: cat.charAt(0).toUpperCase() + cat.slice(1) 
-              }))
-            ]}
-          />
-        </div>
-      </Card>
+      {/* Search and Filters */}
+      <div className="flex gap-4 items-center">
+        <Input
+          label="Search arcs..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1"
+          placeholder="Search by name, description, or tags..."
+        />
+      </div>
 
       {/* Arc List */}
-      {filteredArcs.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-base-content/70 text-lg mb-4">
-            {arcs.length === 0 ? 'No arcs created yet' : 'No arcs match your filters'}
-          </p>
-          <button onClick={handleCreateArc} className="btn btn-primary">
-            Create Your First Arc
-          </button>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredArcs.map((arc) => (
-            <Card key={arc.id} className="hover:shadow-lg transition-shadow duration-200">
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate" title={arc.name}>
-                      {arc.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className={`badge ${getCategoryBadge(arc.category || 'main')} badge-sm`}>
-                        {arc.category || 'main'}
+      <div className="grid gap-4">
+        {filteredArcs.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-base-content/70">
+              {searchTerm ? 'No arcs match your search criteria.' : 'No story arcs created yet.'}
+            </p>
+            {!searchTerm && (
+              <button 
+                onClick={() => handleOpenModal()}
+                className="btn btn-primary mt-4"
+              >
+                Create your first arc
+              </button>
+            )}
+          </Card>
+        ) : (
+          filteredArcs.map(arc => (
+            <Card key={arc.id} className="p-4">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-lg font-semibold">{arc.name}</h3>
+                    <div className="flex gap-2">
+                      <span className="badge badge-primary badge-sm">
+                        {arcStoryletCounts[arc.id] || 0} storylets
                       </span>
-                      <span className={`badge ${getDifficultyBadge(arc.difficulty || 'beginner')} badge-sm`}>
-                        {arc.difficulty || 'beginner'}
-                      </span>
+                      {arc.estimatedLength && (
+                        <span className="badge badge-secondary badge-sm">
+                          ~{arc.estimatedLength}min
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
-
-                {/* Description */}
-                <p className="text-sm text-base-content/70 line-clamp-3">
-                  {arc.description || 'No description provided'}
-                </p>
-
-                {/* Progress */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Progress</span>
-                    <span>{arc.progress}%</span>
-                  </div>
-                  <progress 
-                    className="progress progress-primary w-full" 
-                    value={arc.progress} 
-                    max="100"
-                  />
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-base-content/60">Storylets:</span>
-                    <div className="font-semibold">
-                      {arc.completedCount}/{arc.storyletCount}
+                  
+                  <p className="text-base-content/80 mb-3">{arc.description}</p>
+                  
+                  {arc.tags && arc.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {arc.tags.map(tag => (
+                        <span key={tag} className="badge badge-ghost badge-sm">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                  </div>
-                  <div>
-                    <span className="text-base-content/60">Play Time:</span>
-                    <div className="font-semibold">
-                      {Math.round(arc.estimatedPlayTime / 60) || 0}h {arc.estimatedPlayTime % 60}m
+                  )}
+                  
+                  {arc.prerequisites && arc.prerequisites.length > 0 && (
+                    <div className="text-sm text-base-content/60">
+                      <strong>Prerequisites:</strong> {arc.prerequisites.join(', ')}
                     </div>
-                  </div>
+                  )}
                 </div>
-
-                {/* Tags */}
-                {arc.tags && arc.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {arc.tags.slice(0, 3).map(tag => (
-                      <span key={tag} className="badge badge-ghost badge-xs">
-                        {tag}
-                      </span>
-                    ))}
-                    {arc.tags.length > 3 && (
-                      <span className="badge badge-ghost badge-xs">
-                        +{arc.tags.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex justify-between items-center pt-2 border-t border-base-300">
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleEditArcForm(arc)}
-                      className="btn btn-ghost btn-sm"
-                    >
-                      Edit
-                    </button>
-                    {onVisualEdit && (
-                      <button 
-                        onClick={() => onVisualEdit(arc.id)}
-                        className="btn btn-secondary btn-sm"
-                      >
-                        Visual
-                      </button>
-                    )}
-                  </div>
-                  <button 
-                    onClick={() => handleDeleteArc(arc)}
-                    className="btn btn-error btn-sm btn-outline"
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleVisualEdit(arc.id)}
+                    className="btn btn-sm btn-secondary"
+                    title="Visual Editor"
                   >
-                    Delete
+                    🎨 Visual
+                  </button>
+                  <button
+                    onClick={() => handleOpenModal(arc)}
+                    className="btn btn-sm btn-ghost"
+                    title="Edit Arc"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDelete(arc.id)}
+                    className="btn btn-sm btn-error btn-ghost"
+                    title="Delete Arc"
+                  >
+                    🗑️
                   </button>
                 </div>
               </div>
             </Card>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
-      {/* Create/Edit Arc Modal */}
+      {/* Arc Form Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingArc ? 'Edit Arc' : 'Create New Arc'}
+        onClose={handleCloseModal}
+        title={editingArc ? 'Edit Story Arc' : 'Create Story Arc'}
       >
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Arc Name"
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="Enter arc name"
+            placeholder="Enter arc name..."
+            required
           />
 
           <TextArea
             label="Description"
             value={formData.description}
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Describe the narrative arc"
+            placeholder="Describe this story arc..."
             rows={3}
+            required
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Category"
-              value={formData.category}
-              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-              options={[
-                { value: 'main', label: 'Main Story' },
-                { value: 'side', label: 'Side Quest' },
-                { value: 'epilogue', label: 'Epilogue' },
-                { value: 'tutorial', label: 'Tutorial' }
-              ]}
-            />
-
-            <Select
-              label="Difficulty"
-              value={formData.difficulty}
-              onChange={(e) => setFormData(prev => ({ ...prev, difficulty: e.target.value as ArcFormData['difficulty'] }))}
-              options={[
-                { value: 'beginner', label: 'Beginner' },
-                { value: 'intermediate', label: 'Intermediate' },
-                { value: 'advanced', label: 'Advanced' }
-              ]}
-            />
-          </div>
-
           <Input
-            type="number"
             label="Estimated Length (minutes)"
+            type="number"
             value={formData.estimatedLength.toString()}
-            onChange={(e) => setFormData(prev => ({ ...prev, estimatedLength: parseInt(e.target.value) || 10 }))}
+            onChange={(e) => setFormData(prev => ({ 
+              ...prev, 
+              estimatedLength: parseInt(e.target.value) || 30
+            }))}
             min="1"
           />
 
@@ -398,27 +276,27 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
             value={formData.tags.join(', ')}
             onChange={(e) => setFormData(prev => ({ 
               ...prev, 
-              tags: e.target.value.split(',').map(t => t.trim()).filter(t => t) 
+              tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
             }))}
-            placeholder="mystery, dialogue, action"
+            placeholder="mystery, investigation, main-story..."
           />
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-3 pt-4">
             <button 
-              onClick={() => setIsModalOpen(false)} 
+              type="button" 
+              onClick={handleCloseModal}
               className="btn btn-ghost"
             >
               Cancel
             </button>
             <button 
-              onClick={handleSaveArc} 
+              type="submit"
               className="btn btn-primary"
-              disabled={!formData.name.trim()}
             >
               {editingArc ? 'Update Arc' : 'Create Arc'}
             </button>
           </div>
-        </div>
+        </form>
       </Modal>
     </div>
   );

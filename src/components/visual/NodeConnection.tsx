@@ -6,6 +6,7 @@ interface NodeConnectionProps {
   connection: NodeConnectionType;
   fromNode: StoryletNode;
   toNode: StoryletNode;
+  isSelected?: boolean;
 }
 
 export const NodeConnection: React.FC<NodeConnectionProps> = ({ 

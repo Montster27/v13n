@@ -1,14 +1,40 @@
 import Dexie, { type Table } from 'dexie';
+import type { ClueEvidence, ClueConnection, CaseTheory, MinigameConfig } from '../types/clue';
+import type { StoryletTrigger, StoryletChoice, StoryletEffect } from '../types/storylet';
+import type { CharacterRelationship, CharacterAttribute, CharacterTrait } from '../types/character';
 
 // Define the database schema interfaces
+interface DbConnectionMapping {
+  from: string;
+  to: string;
+  type: string;
+}
+
+
+interface DbMinigameResultDetails {
+  moves?: number;
+  accuracy?: number;
+  bonusPoints?: number;
+  perfectRounds?: number;
+}
+
+interface DbImportData {
+  data: {
+    storylets?: DbStorylet[];
+    storyArcs?: DbStoryArc[];
+    characters?: DbCharacter[];
+    clues?: DbClue[];
+    gameSaves?: DbGameSave[];
+  };
+}
 export interface DbStorylet {
   id?: string;
   title: string;
   description: string;
   content: string;
-  triggers: any[];
-  choices: any[];
-  effects: any[];
+  triggers: StoryletTrigger[];
+  choices: StoryletChoice[];
+  effects: StoryletEffect[];
   storyArc?: string;
   status: 'dev' | 'stage' | 'live';
   createdAt: Date;
@@ -32,9 +58,9 @@ export interface DbCharacter {
   biography?: string;
   avatar?: string;
   color?: string;
-  attributes: any[];
-  traits: any[];
-  relationships: any[];
+  attributes: CharacterAttribute[];
+  traits: CharacterTrait[];
+  relationships: CharacterRelationship[];
   availableInStorylets: string[];
   unlockedBy?: string[];
   tags: string[];
@@ -61,8 +87,8 @@ export interface DbClue {
   prerequisites: string[];
   requiredStorylets: string[];
   requiredCharacterInteractions: string[];
-  evidence: any[];
-  connections: any[];
+  evidence: ClueEvidence[];
+  connections: ClueConnection[];
   investigationLevel: 'superficial' | 'detailed' | 'exhaustive';
   reliability: 'confirmed' | 'likely' | 'uncertain' | 'false';
   unlocksStorylets: string[];
@@ -74,7 +100,7 @@ export interface DbClue {
   narrativeWeight: number;
   status: 'active' | 'resolved' | 'abandoned' | 'red_herring';
   isMinigame: boolean;
-  minigameConfig?: any; // JSON serialized MinigameConfig
+  minigameConfig?: MinigameConfig;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -84,8 +110,8 @@ export interface DbClueBoard {
   name: string;
   description?: string;
   clueIds: string[];
-  connectionMappings: any[];
-  theories: any[];
+  connectionMappings: DbConnectionMapping[];
+  theories: CaseTheory[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -119,8 +145,8 @@ export interface DbClueInvestigation {
   investigationStep: number;
   method: string;
   findings: string;
-  newEvidenceFound: any[];
-  newConnectionsFound: any[];
+  newEvidenceFound: ClueEvidence[];
+  newConnectionsFound: ClueConnection[];
   timeSpent: number;
   resourcesUsed?: string[];
   success: boolean;
@@ -140,7 +166,7 @@ export interface DbMinigameAttempt {
     attemptsUsed: number;
     triggeredStoryletId: string;
     completedAt: Date;
-    details?: any;
+    details?: DbMinigameResultDetails;
   };
   timestamp: Date;
 }
@@ -217,7 +243,7 @@ export class V13nDatabase extends Dexie {
       gameSaves: '++id, slot, name, createdAt'
     }).upgrade(trans => {
       // Upgrade existing clues to add missing fields
-      return trans.table('clues').toCollection().modify((clue: any) => {
+      return trans.table('clues').toCollection().modify((clue: DbClue) => {
         if (!clue.createdAt) {
           clue.createdAt = new Date();
         }
@@ -292,7 +318,7 @@ export const databaseHelpers = {
   },
 
   // Import data
-  importData: async (importedData: any) => {
+  importData: async (importedData: DbImportData) => {
     try {
       const { data } = importedData;
       

@@ -6,8 +6,6 @@ export interface StoryArc {
   id: string;
   name: string;
   description: string;
-  category?: 'main' | 'side' | 'epilogue' | 'tutorial' | string;
-  difficulty?: 'beginner' | 'intermediate' | 'advanced';
   estimatedLength?: number; // in minutes
   prerequisites?: string[]; // Other arc IDs that must be completed first
   tags?: string[];
