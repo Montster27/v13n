@@ -4,8 +4,10 @@ import { Input } from '../forms/Input';
 import { TextArea } from '../forms/TextArea';
 import { Select } from '../forms/Select';
 import { Modal } from '../common/Modal';
+import { LoadingButton } from '../common/LoadingSpinner';
 import { useClueStore } from '../../stores/useClueStore';
 import { useMinigameStore } from '../../stores/useMinigameStore';
+import { useNarrativeStore } from '../../stores/useNarrativeStore';
 import type { Clue, ClueFormData, MinigameConfig } from '../../types/clue';
 import { MinigameContainer } from '../minigames/MinigameContainer';
 import { createSampleMinigameClue } from '../../utils/createSampleMinigameClue';
@@ -37,6 +39,7 @@ const initialClueForm: Omit<ClueFormData, 'id'> = {
   requiredStorylets: [],
   requiredCharacterInteractions: [],
   unlocksStorylets: [],
+  storyArc: undefined,
   isMinigame: false,
   minigameConfig: undefined,
 };
@@ -54,6 +57,8 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
   const [filterStatus, setFilterStatus] = useState('all');
   const [showDiscoveredOnly, setShowDiscoveredOnly] = useState(false);
   const [playingMinigame, setPlayingMinigame] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [operationLoading, setOperationLoading] = useState<Record<string, boolean>>({});
 
   const {
     clues,
@@ -74,6 +79,7 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
   } = useClueStore();
 
   const { startMinigame } = useMinigameStore();
+  const { arcs } = useNarrativeStore();
 
 
   // Load clues on mount
@@ -168,6 +174,7 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
       requiredStorylets: clue.requiredStorylets,
       requiredCharacterInteractions: clue.requiredCharacterInteractions,
       unlocksStorylets: clue.unlocksStorylets,
+      storyArc: clue.storyArc,
       isMinigame: clue.isMinigame,
       minigameConfig: clue.minigameConfig,
     });
@@ -177,6 +184,7 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
   const handleSaveClue = async () => {
     if (!formData.name.trim() || !formData.title.trim()) return;
 
+    setIsSaving(true);
     try {
       if (editingClue) {
         await updateClue(editingClue, formData);
@@ -188,6 +196,8 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
       setFormData(initialClueForm);
     } catch (error) {
       console.error('Failed to save clue:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -196,10 +206,15 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
       return;
     }
 
+    const operationId = `delete-${clue.id}`;
+    setOperationLoading(prev => ({ ...prev, [operationId]: true }));
+
     try {
       await deleteClue(clue.id!);
     } catch (error) {
       console.error('Failed to delete clue:', error);
+    } finally {
+      setOperationLoading(prev => ({ ...prev, [operationId]: false }));
     }
   };
 
@@ -219,6 +234,9 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
   };
 
   const handleCreateSampleMinigame = async () => {
+    const operationId = 'create-sample';
+    setOperationLoading(prev => ({ ...prev, [operationId]: true }));
+
     try {
       await createSampleMinigameClue();
       // Sample minigame clue created
@@ -226,6 +244,8 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
       loadClues();
     } catch (error) {
       console.error('Failed to create sample minigame clue:', error);
+    } finally {
+      setOperationLoading(prev => ({ ...prev, [operationId]: false }));
     }
   };
 
@@ -306,9 +326,14 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
           <button onClick={handleCreateClue} className="btn btn-primary">
             Add New Clue
           </button>
-          <button onClick={handleCreateSampleMinigame} className="btn btn-success">
+          <LoadingButton
+            isLoading={operationLoading['create-sample']}
+            loadingText="Creating..."
+            onClick={handleCreateSampleMinigame}
+            className="btn-success"
+          >
             🎮 Add Sample Minigame
-          </button>
+          </LoadingButton>
           {import.meta.env.DEV && (
             <button onClick={handleResetDatabase} className="btn btn-warning btn-sm">
               🗑️ Reset DB
@@ -482,6 +507,11 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
                         🎮 Minigame
                       </span>
                     )}
+                    {clue.storyArc && (
+                      <span className="badge badge-outline badge-sm">
+                        📖 {arcs.find(arc => arc.id === clue.storyArc)?.name || 'Unknown Arc'}
+                      </span>
+                    )}
                   </div>
 
                   {/* Description */}
@@ -591,12 +621,15 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
                         </button>
                       )}
                     </div>
-                    <button 
+                    <LoadingButton
+                      isLoading={operationLoading[`delete-${clue.id}`]}
+                      loadingText="Deleting..."
                       onClick={() => handleDeleteClue(clue)}
-                      className="btn btn-error btn-sm btn-outline"
+                      className="btn-error btn-sm btn-outline"
+                      size="sm"
                     >
                       Delete
-                    </button>
+                    </LoadingButton>
                   </div>
                 </div>
               </Card>
@@ -649,7 +682,7 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
           />
 
           {/* Classification */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Select
               label="Category"
               value={formData.category}
@@ -674,6 +707,16 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
                 { value: 'social', label: 'Social' },
                 { value: 'logical', label: 'Logical' },
                 { value: 'temporal', label: 'Temporal' }
+              ]}
+            />
+
+            <Select
+              label="Story Arc"
+              value={formData.storyArc || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, storyArc: e.target.value || undefined }))}
+              options={[
+                { value: '', label: 'No Arc' },
+                ...arcs.map(arc => ({ value: arc.id, label: arc.name }))
               ]}
             />
           </div>
@@ -964,16 +1007,19 @@ export const ClueManager: React.FC<ClueManagerProps> = ({
             <button 
               onClick={() => setIsModalOpen(false)} 
               className="btn btn-ghost"
+              disabled={isSaving}
             >
               Cancel
             </button>
-            <button 
-              onClick={handleSaveClue} 
-              className="btn btn-primary"
+            <LoadingButton
+              isLoading={isSaving}
+              loadingText={editingClue ? 'Updating...' : 'Creating...'}
+              onClick={handleSaveClue}
               disabled={!formData.name.trim() || !formData.title.trim()}
+              className="btn-primary"
             >
               {editingClue ? 'Update Clue' : 'Create Clue'}
-            </button>
+            </LoadingButton>
           </div>
         </div>
       </Modal>

@@ -54,6 +54,17 @@ export const useCanvasControls = () => {
   }, [selectedNode, removeNode, getNodeById]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
+    // Don't intercept keyboard events when user is typing in input fields
+    const target = e.target as HTMLElement;
+    const isInputElement = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.contentEditable === 'true' ||
+                          target.isContentEditable;
+    
+    if (isInputElement) {
+      return; // Let input elements handle their own keyboard events
+    }
+
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       handleDeleteSelected();

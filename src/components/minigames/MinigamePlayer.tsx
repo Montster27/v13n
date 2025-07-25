@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import type { MinigameConfig } from '../../types/clue';
 import { MemoryCardGame } from './games/MemoryCardGame';
+import { LogicPuzzleGame } from './games/LogicPuzzleGame';
+import { SequenceMatchGame } from './games/SequenceMatchGame';
+import { WordPuzzleGame } from './games/WordPuzzleGame';
+import { ReactionTimeGame } from './games/ReactionTimeGame';
+import { PatternRecognitionGame } from './games/PatternRecognitionGame';
 
 interface MinigamePlayerProps {
   config: MinigameConfig;
@@ -29,28 +34,48 @@ export const MinigamePlayer: React.FC<MinigamePlayerProps> = ({
             break;
             
           case 'logic_puzzle':
-            // TODO: Implement logic puzzle game
-            setError('Logic puzzle minigame not yet implemented');
+            setGameComponent(
+              <LogicPuzzleGame 
+                config={config}
+                clueId={clueId}
+              />
+            );
             break;
             
           case 'sequence_match':
-            // TODO: Implement sequence match game
-            setError('Sequence match minigame not yet implemented');
+            setGameComponent(
+              <SequenceMatchGame 
+                config={config}
+                clueId={clueId}
+              />
+            );
             break;
             
           case 'word_puzzle':
-            // TODO: Implement word puzzle game
-            setError('Word puzzle minigame not yet implemented');
+            setGameComponent(
+              <WordPuzzleGame 
+                config={config}
+                clueId={clueId}
+              />
+            );
             break;
             
           case 'reaction_time':
-            // TODO: Implement reaction time game
-            setError('Reaction time minigame not yet implemented');
+            setGameComponent(
+              <ReactionTimeGame 
+                config={config}
+                clueId={clueId}
+              />
+            );
             break;
             
           case 'pattern_recognition':
-            // TODO: Implement pattern recognition game
-            setError('Pattern recognition minigame not yet implemented');
+            setGameComponent(
+              <PatternRecognitionGame 
+                config={config}
+                clueId={clueId}
+              />
+            );
             break;
             
           default:

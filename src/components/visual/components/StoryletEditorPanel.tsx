@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNarrativeStore } from '../../../stores/useNarrativeStore';
+import { useClueStore } from '../../../stores/useClueStore';
+import { ClueSelectionModal } from '../../clues/ClueSelectionModal';
 import type { Storylet, StoryletChoice, StoryletEffect } from '../../../types/storylet';
+import type { Clue } from '../../../types/clue';
 
 interface StoryletEditorPanelProps {
   storyletId: string;
@@ -13,10 +16,13 @@ export const StoryletEditorPanel: React.FC<StoryletEditorPanelProps> = ({
   isOpen,
   onClose
 }) => {
-  const { storylets, updateStorylet } = useNarrativeStore();
+  const { storylets, updateStorylet, addStorylet } = useNarrativeStore();
+  const { getClue } = useClueStore();
   
   const [editingStorylet, setEditingStorylet] = useState<Storylet | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [isClueModalOpen, setIsClueModalOpen] = useState(false);
+  const [selectedChoiceForClue, setSelectedChoiceForClue] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && storyletId) {
@@ -98,6 +104,74 @@ export const StoryletEditorPanel: React.FC<StoryletEditorPanelProps> = ({
     );
     
     updateStoryletField('choices', updatedChoices);
+  };
+
+  const handleAddClue = (choiceId: string) => {
+    setSelectedChoiceForClue(choiceId);
+    setIsClueModalOpen(true);
+  };
+
+  const handleClueSelected = (clue: Clue) => {
+    if (!selectedChoiceForClue) return;
+    
+    // Update the choice to reference the clue
+    updateChoice(selectedChoiceForClue, { 
+      clueId: clue.id,
+      nextStoryletId: undefined, // Clear storylet link when adding clue
+      createNewStorylet: false
+    });
+    
+    // Close modal and reset state
+    setIsClueModalOpen(false);
+    setSelectedChoiceForClue(null);
+  };
+
+  const handleNextStoryletChange = async (choiceId: string, value: string) => {
+    if (value === 'ADD_CLUE') {
+      handleAddClue(choiceId);
+      return;
+    }
+    
+    if (value === 'CREATE_NEW') {
+      // Create a new storylet
+      try {
+        const newStoryletId = await addStorylet({
+          title: 'New Storylet',
+          description: 'A new storylet created from the visual editor',
+          content: 'This storylet needs content. Double-click to edit.',
+          status: 'dev',
+          storyArc: editingStorylet.storyArc, // Use the same arc as current storylet
+          triggers: [],
+          effects: [],
+          choices: [],
+          tags: [],
+          priority: 1,
+          estimatedPlayTime: 5
+        });
+        
+        // Update the choice to point to the new storylet
+        updateChoice(choiceId, { nextStoryletId: newStoryletId });
+        
+        // Show success feedback
+        console.log('✅ New storylet created:', newStoryletId);
+        
+        // Trigger a custom event to notify the visual editor to refresh
+        window.dispatchEvent(new CustomEvent('storyletCreated', { 
+          detail: { storyletId: newStoryletId, fromChoiceId: choiceId } 
+        }));
+      } catch (error) {
+        console.error('❌ Failed to create new storylet:', error);
+        // Reset the dropdown to no connection on error
+        updateChoice(choiceId, { nextStoryletId: undefined });
+      }
+    } else {
+      // Regular storylet selection - clear clue reference when selecting storylet
+      updateChoice(choiceId, { 
+        nextStoryletId: value || undefined,
+        clueId: undefined, // Clear clue when selecting storylet
+        createNewStorylet: false
+      });
+    }
   };
 
   const removeChoice = (choiceId: string) => {
@@ -274,6 +348,51 @@ export const StoryletEditorPanel: React.FC<StoryletEditorPanelProps> = ({
                   onChange={(e) => updateChoice(choice.id, { description: e.target.value })}
                   placeholder="Description (optional)"
                 />
+                
+                {/* Next Storylet Selection */}
+                <div className="flex gap-2 items-center">
+                  <label className="text-xs opacity-70 min-w-fit">Next Storylet:</label>
+                  <select
+                    className="select select-bordered select-xs flex-1"
+                    value={choice.clueId ? `CLUE_${choice.clueId}` : (choice.nextStoryletId || '')}
+                    onChange={(e) => handleNextStoryletChange(choice.id, e.target.value)}
+                  >
+                    <option value="">No connection</option>
+                    <option value="CREATE_NEW" className="font-semibold text-primary">➕ Create New Storylet</option>
+                    <option value="ADD_CLUE" className="font-semibold text-secondary">🔍 Add a Clue</option>
+                    {storylets.length > 1 && <option disabled>─────────────</option>}
+                    {storylets
+                      .filter(s => s.id !== editingStorylet.id) // Don't allow self-connection
+                      .map(storylet => (
+                        <option key={storylet.id} value={storylet.id}>
+                          {storylet.title}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+                
+                {/* Status Display */}
+                {choice.clueId && (
+                  <div className="alert alert-info alert-sm">
+                    <span className="text-sm">
+                      🔍 This choice provides access to clue: <strong>{getClue(choice.clueId)?.title || 'Unknown Clue'}</strong>
+                    </span>
+                  </div>
+                )}
+                
+                {choice.nextStoryletId && !choice.clueId && (
+                  <div className="alert alert-success alert-sm">
+                    <span className="text-sm">
+                      🔗 This choice leads to: <strong>{storylets.find(s => s.id === choice.nextStoryletId)?.title || 'Unknown Storylet'}</strong>
+                    </span>
+                  </div>
+                )}
+                
+                {/* Help text */}
+                <div className="text-xs opacity-60 mt-1">
+                  <p>💡 Use "Create New Storylet" to link to a new storylet, or "Add a Clue" to provide clue access</p>
+                </div>
               </div>
             ))}
           </div>
@@ -357,6 +476,18 @@ export const StoryletEditorPanel: React.FC<StoryletEditorPanelProps> = ({
           />
         </div>
       </div>
+
+      {/* Clue Selection Modal */}
+      <ClueSelectionModal
+        isOpen={isClueModalOpen}
+        onClose={() => {
+          setIsClueModalOpen(false);
+          setSelectedChoiceForClue(null);
+        }}
+        onSelectClue={handleClueSelected}
+        arcId={editingStorylet?.storyArc}
+        title="Select a Clue for This Choice"
+      />
     </div>
   );
 };

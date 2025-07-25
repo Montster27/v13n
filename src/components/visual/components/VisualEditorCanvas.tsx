@@ -29,6 +29,8 @@ export const VisualEditorCanvas: React.FC<VisualEditorCanvasProps> = ({
     connecting
   } = useVisualEditorStore();
 
+
+
   const handleNodeDoubleClick = useCallback((storyletId: string | undefined) => {
     if (storyletId && onNodeDoubleClick) {
       onNodeDoubleClick(storyletId);
@@ -36,7 +38,7 @@ export const VisualEditorCanvas: React.FC<VisualEditorCanvasProps> = ({
   }, [onNodeDoubleClick]);
 
   return (
-    <div className="flex-1 relative overflow-hidden bg-base-100">
+    <div className="flex-1 relative overflow-hidden bg-base-100" style={{ minHeight: '600px' }}>
       {/* Canvas */}
       <div
         ref={canvasRef}
@@ -46,7 +48,9 @@ export const VisualEditorCanvas: React.FC<VisualEditorCanvasProps> = ({
         onWheel={onWheel}
         style={{
           transform: `scale(${scale}) translate(${offset.x}px, ${offset.y}px)`,
-          transformOrigin: '0 0'
+          transformOrigin: '0 0',
+          minHeight: '600px',
+          position: 'relative'
         }}
       >
         {/* SVG for connections */}
@@ -125,7 +129,17 @@ export const VisualEditorCanvas: React.FC<VisualEditorCanvasProps> = ({
           })()}
         </svg>
 
+
+
         {/* Render nodes */}
+        {nodes.length === 0 && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center opacity-50">
+            <p>No storylets to display</p>
+            <p className="text-sm">Create storylets or go to Data Manager to create sample data</p>
+          </div>
+        )}
+        
+        
         {nodes.map(node => (
           <StoryletNode
             key={node.id}

@@ -55,6 +55,7 @@ interface ClueActions {
   // Utility functions
   getCluesByCategory: (category: Clue['category']) => Clue[];
   getCluesByImportance: (importance: Clue['importance']) => Clue[];
+  getCluesByArc: (arcId: string) => Clue[];
   getDiscoveredClues: () => Clue[];
   getUndiscoveredClues: () => Clue[];
   searchClues: (query: string) => Clue[];
@@ -394,6 +395,10 @@ export const useClueStore = create<ClueStore>()(
 
     getCluesByImportance: (importance) => {
       return get().clues.filter(clue => clue.importance === importance);
+    },
+
+    getCluesByArc: (arcId) => {
+      return get().clues.filter(clue => clue.storyArc === arcId);
     },
 
     getDiscoveredClues: () => {

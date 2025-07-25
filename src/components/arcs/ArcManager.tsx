@@ -3,6 +3,7 @@ import { Card } from '../common/Card';
 import { Input } from '../forms/Input';
 import { TextArea } from '../forms/TextArea';
 import { Modal } from '../common/Modal';
+import { LoadingButton, LoadingSpinner } from '../common/LoadingSpinner';
 import { useNarrativeStore } from '../../stores/useNarrativeStore';
 import { type StoryArc } from '../../types/narrative';
 
@@ -34,10 +35,12 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
   const [editingArc, setEditingArc] = useState<string | undefined>();
   const [formData, setFormData] = useState<ArcFormData>(initialArcForm);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { 
     arcs, 
     storylets, 
+    loading,
     addStoryArc, 
     updateStoryArc, 
     deleteStoryArc
@@ -89,6 +92,7 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
     const arcData = {
       name: formData.name,
@@ -110,6 +114,8 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
     } catch (error) {
       console.error('Failed to save arc:', error);
       // You might want to show an error message to the user here
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -155,7 +161,11 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
 
       {/* Arc List */}
       <div className="grid gap-4">
-        {filteredArcs.length === 0 ? (
+        {loading.arcs ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner size="lg" message="Loading story arcs..." />
+          </div>
+        ) : filteredArcs.length === 0 ? (
           <Card className="p-8 text-center">
             <p className="text-base-content/70">
               {searchTerm ? 'No arcs match your search criteria.' : 'No story arcs created yet.'}
@@ -286,15 +296,18 @@ export const ArcManager: React.FC<ArcManagerProps> = ({
               type="button" 
               onClick={handleCloseModal}
               className="btn btn-ghost"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
-            <button 
+            <LoadingButton
               type="submit"
+              isLoading={isSubmitting}
+              loadingText={editingArc ? 'Updating...' : 'Creating...'}
               className="btn btn-primary"
             >
               {editingArc ? 'Update Arc' : 'Create Arc'}
-            </button>
+            </LoadingButton>
           </div>
         </form>
       </Modal>

@@ -5,7 +5,10 @@ import { TextArea } from '../forms/TextArea';
 import { Select } from '../forms/Select';
 import { Modal } from '../common/Modal';
 import { useNarrativeStore } from '../../stores/useNarrativeStore';
+import { useClueStore } from '../../stores/useClueStore';
+import { ClueSelectionModal } from '../clues/ClueSelectionModal';
 import { type StoryletFormData, type StoryletTrigger, type StoryletChoice, type StoryletEffect, type ValidationError } from '../../types/storylet';
+import type { Clue } from '../../types/clue';
 
 interface AdvancedStoryletCreatorProps {
   storyletId?: string;
@@ -36,8 +39,11 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'triggers' | 'choices' | 'effects'>('basic');
+  const [isClueModalOpen, setIsClueModalOpen] = useState(false);
+  const [selectedChoiceForClue, setSelectedChoiceForClue] = useState<string | null>(null);
 
   const { addStorylet, updateStorylet, getStorylet, arcs, storylets } = useNarrativeStore();
+  const { getClue } = useClueStore();
 
   // Load existing storylet if editing
   React.useEffect(() => {
@@ -214,6 +220,26 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
       choices: prev.choices.filter(choice => choice.id !== id)
     }));
   }, []);
+
+  const handleAddClue = useCallback((choiceId: string) => {
+    setSelectedChoiceForClue(choiceId);
+    setIsClueModalOpen(true);
+  }, []);
+
+  const handleClueSelected = useCallback((clue: Clue) => {
+    if (!selectedChoiceForClue) return;
+    
+    // Update the choice to reference the clue
+    updateChoice(selectedChoiceForClue, { 
+      clueId: clue.id,
+      nextStoryletId: undefined, // Clear storylet link when adding clue
+      createNewStorylet: false
+    });
+    
+    // Close modal and reset state
+    setIsClueModalOpen(false);
+    setSelectedChoiceForClue(null);
+  }, [selectedChoiceForClue, updateChoice]);
 
   const addEffect = useCallback(() => {
     const newEffect: StoryletEffect = {
@@ -471,20 +497,23 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
                   
                   <Select
                     label="Next Storylet"
-                    value={choice.nextStoryletId || ''}
+                    value={choice.clueId ? `CLUE_${choice.clueId}` : (choice.nextStoryletId || '')}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === 'CREATE_NEW') {
-                        updateChoice(choice.id, { nextStoryletId: undefined, createNewStorylet: true });
+                      if (value === 'ADD_CLUE') {
+                        handleAddClue(choice.id);
+                      } else if (value === 'CREATE_NEW') {
+                        updateChoice(choice.id, { nextStoryletId: undefined, createNewStorylet: true, clueId: undefined });
                       } else if (value === '') {
-                        updateChoice(choice.id, { nextStoryletId: undefined, createNewStorylet: false });
+                        updateChoice(choice.id, { nextStoryletId: undefined, createNewStorylet: false, clueId: undefined });
                       } else {
-                        updateChoice(choice.id, { nextStoryletId: value, createNewStorylet: false });
+                        updateChoice(choice.id, { nextStoryletId: value, createNewStorylet: false, clueId: undefined });
                       }
                     }}
                     options={[
                       { value: '', label: 'No next storylet (ends here)' },
                       { value: 'CREATE_NEW', label: '+ Create New Storylet' },
+                      { value: 'ADD_CLUE', label: '🔍 Add a Clue' },
                       ...storylets
                         .filter(s => s.storyArc === formData.storyArc && s.id !== storyletId)
                         .map(s => ({ value: s.id!, label: s.title }))
@@ -500,10 +529,18 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
                     </div>
                   )}
                   
-                  {choice.nextStoryletId && (
+                  {choice.nextStoryletId && !choice.clueId && (
                     <div className="alert alert-success">
                       <span className="text-sm">
                         🔗 This choice will lead to: <strong>{storylets.find(s => s.id === choice.nextStoryletId)?.title || 'Unknown Storylet'}</strong>
+                      </span>
+                    </div>
+                  )}
+                  
+                  {choice.clueId && (
+                    <div className="alert alert-info">
+                      <span className="text-sm">
+                        🔍 This choice provides access to clue: <strong>{getClue(choice.clueId)?.title || 'Unknown Clue'}</strong>
                       </span>
                     </div>
                   )}
@@ -692,6 +729,18 @@ export const AdvancedStoryletCreator: React.FC<AdvancedStoryletCreatorProps> = (
           )}
         </div>
       </Modal>
+
+      {/* Clue Selection Modal */}
+      <ClueSelectionModal
+        isOpen={isClueModalOpen}
+        onClose={() => {
+          setIsClueModalOpen(false);
+          setSelectedChoiceForClue(null);
+        }}
+        onSelectClue={handleClueSelected}
+        arcId={formData.storyArc}
+        title="Select a Clue for This Choice"
+      />
     </div>
   );
 };

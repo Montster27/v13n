@@ -55,6 +55,7 @@ export interface Clue {
   // Storylet integration
   unlocksStorylets: string[]; // Storylets this clue makes available
   mentionedInStorylets: string[]; // Storylets where this clue is referenced
+  storyArc?: string; // Story arc this clue belongs to
   
   // Metadata
   tags: string[];
@@ -94,6 +95,7 @@ export interface ClueFormData {
   requiredStorylets: string[];
   requiredCharacterInteractions: string[];
   unlocksStorylets: string[];
+  storyArc?: string;
   isDiscovered?: boolean;
   evidence?: ClueEvidence[];
   connections?: ClueConnection[];

@@ -1,5 +1,7 @@
 import React, { useCallback } from 'react';
 import { useVisualEditorStore } from '../../../stores/useVisualEditorStore';
+import { useNarrativeStore } from '../../../stores/useNarrativeStore';
+import { Select } from '../../forms/Select';
 
 interface VisualEditorToolbarProps {
   onAddStoryletNode: () => void;
@@ -9,6 +11,8 @@ interface VisualEditorToolbarProps {
   onSave?: () => void;
   onCancel?: () => void;
   arcId?: string;
+  currentArcId?: string;
+  onArcChange: (arcId: string) => void;
 }
 
 export const VisualEditorToolbar: React.FC<VisualEditorToolbarProps> = ({
@@ -18,9 +22,12 @@ export const VisualEditorToolbar: React.FC<VisualEditorToolbarProps> = ({
   onAutoLayout,
   onSave,
   onCancel,
-  arcId
+  arcId,
+  currentArcId,
+  onArcChange
 }) => {
   const { mode, connecting, selectedNode, scale, nodes } = useVisualEditorStore();
+  const { arcs } = useNarrativeStore();
   
   const isConnecting = Boolean(connecting);
   
@@ -41,11 +48,31 @@ export const VisualEditorToolbar: React.FC<VisualEditorToolbarProps> = ({
 
   return (
     <div className="bg-base-200 border-b p-4">
-      {/* Top row - Title and main actions */}
+      {/* Top row - Title, Arc Selector, and main actions */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">
-          {arcId ? 'Arc Visual Editor' : 'Storylet Visual Editor'}
-        </h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-semibold">
+            Visual Story Editor
+          </h2>
+          
+          {/* Arc Selector */}
+          <div className="min-w-[200px]">
+            <Select
+              label=""
+              value={currentArcId || 'all'}
+              onChange={(e) => onArcChange(e.target.value)}
+              options={[
+                { value: 'all', label: '📚 All Storylets' },
+                ...arcs.map(arc => ({ 
+                  value: arc.id, 
+                  label: `🎭 ${arc.name}` 
+                }))
+              ]}
+              className="select-sm"
+            />
+          </div>
+        </div>
+        
         <div className="flex gap-2">
           {onSave && (
             <button onClick={onSave} className="btn btn-primary btn-sm">

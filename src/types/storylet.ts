@@ -19,6 +19,7 @@ export interface StoryletChoice {
   unlocked?: boolean;
   nextStoryletId?: string; // Links to the next storylet when this choice is selected
   createNewStorylet?: boolean; // Flag to indicate this choice should create a new storylet
+  clueId?: string; // Links to a clue when this choice provides clue access
 }
 
 export interface StoryletEffect {

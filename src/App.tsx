@@ -1,19 +1,26 @@
 import { useEffect, useState } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
 import { Card } from './components/common/Card';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AdvancedStoryletCreator } from './components/storylets/AdvancedStoryletCreator';
 import { StoryletBrowser } from './components/browser/StoryletBrowser';
 import { ArcManager } from './components/arcs/ArcManager';
 import { VisualStoryletEditor } from './components/visual/VisualStoryletEditor';
 import { CharacterManager } from './components/characters/CharacterManager';
 import { ClueManager } from './components/clues/ClueManager';
+import { StoryletSandbox } from './components/sandbox/StoryletSandbox';
+import { DataManager } from './components/data/DataManager';
+import { MinigameTester } from './components/testing/MinigameTester';
 import { initializeEnvironment } from './utils/featureFlags';
 import { useCoreGameStore } from './stores/useCoreGameStore';
 import { useNarrativeStore } from './stores/useNarrativeStore';
 import { useCharacterStore } from './stores/useCharacterStore';
 import { useClueStore } from './stores/useClueStore';
+import { initializeSecurity } from './utils/security';
+import './utils/debugDatabase'; // Load debug utilities
+import { checkAndInitializeData, diagnoseVisualEditorIssues } from './utils/initializeApp';
 
-type AppView = 'dashboard' | 'storylets' | 'create-storylet' | 'edit-storylet' | 'arcs' | 'visual-editor' | 'characters' | 'clues';
+type AppView = 'dashboard' | 'storylets' | 'create-storylet' | 'edit-storylet' | 'arcs' | 'visual-editor' | 'characters' | 'clues' | 'sandbox' | 'data-manager' | 'minigame-tester';
 
 function App() {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
@@ -29,11 +36,26 @@ function App() {
     // Initialize environment and feature flags on app start
     initializeEnvironment();
     
+    // Initialize security measures
+    initializeSecurity();
+    
     // Load existing data from Dexie
     loadStorylets();
     loadStoryArcs();
     loadCharacters();
     loadClues();
+    
+    // Check if database is empty and provide helpful information
+    setTimeout(() => {
+      checkAndInitializeData(false).then(result => {
+        if (result.needsData) {
+          console.log('💡 Visual Editor appears empty? Run window.diagnoseVisualEditor() in console for help');
+        }
+      });
+      
+      // Make diagnosis function available globally
+      (window as any).diagnoseVisualEditor = diagnoseVisualEditorIssues;
+    }, 1000); // Give stores time to load
   }, [loadStorylets, loadStoryArcs, loadCharacters, loadClues]);
 
   const handleCreateStorylet = () => {
@@ -115,12 +137,6 @@ function App() {
                 </li>
                 <li 
                   className="cursor-pointer hover:text-primary"
-                  onClick={() => setCurrentView('visual-editor')}
-                >
-                  • Visual storylet editor
-                </li>
-                <li 
-                  className="cursor-pointer hover:text-primary"
                   onClick={() => setCurrentView('characters')}
                 >
                   • Manage characters
@@ -131,43 +147,81 @@ function App() {
                 >
                   • Design clues
                 </li>
-                <li className="text-base-content/50">• Test in sandbox (Phase 5)</li>
+                <li 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => setCurrentView('sandbox')}
+                >
+                  • Test in sandbox (Phase 5)
+                </li>
+                <li 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => setCurrentView('data-manager')}
+                >
+                  • Import/Export data
+                </li>
+                <li 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => setCurrentView('minigame-tester')}
+                >
+                  • Test minigames 🎮
+                </li>
               </ul>
             </Card>
 
             <Card title="Project Status">
-              <div className="stats stats-vertical shadow">
-                <div className="stat">
-                  <div className="stat-title">Storylets</div>
-                  <div className="stat-value text-primary">{storylets.length}</div>
-                  <div className="stat-desc">
-                    {storylets.filter(s => s.status === 'live').length} live, {' '}
-                    {storylets.filter(s => s.status === 'stage').length} staging, {' '}
-                    {storylets.filter(s => s.status === 'dev').length} dev
+              {storylets.length === 0 && arcs.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-6xl mb-4">📝</div>
+                  <h3 className="text-lg font-semibold mb-2">No Data Found</h3>
+                  <p className="text-base-content/70 mb-4">
+                    Your database is empty. The Visual Editor will show no storylets or connections.
+                  </p>
+                  <div className="space-y-2">
+                    <button 
+                      className="btn btn-primary btn-sm"
+                      onClick={() => setCurrentView('data-manager')}
+                    >
+                      Go to Data Manager
+                    </button>
+                    <p className="text-xs opacity-60">
+                      Create sample storylets to test the visual editor
+                    </p>
                   </div>
                 </div>
-                <div className="stat">
-                  <div className="stat-title">Story Arcs</div>
-                  <div className="stat-value text-secondary">{arcs.length}</div>
-                  <div className="stat-desc">Narrative structures</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-title">Characters</div>
-                  <div className="stat-value text-accent">{characters.length}</div>
-                  <div className="stat-desc">
-                    {characters.filter(c => c.status === 'active').length} active, {' '}
-                    {characters.filter(c => c.importance === 'critical').length} critical
+              ) : (
+                <div className="stats stats-vertical shadow">
+                  <div className="stat">
+                    <div className="stat-title">Storylets</div>
+                    <div className="stat-value text-primary">{storylets.length}</div>
+                    <div className="stat-desc">
+                      {storylets.filter(s => s.status === 'live').length} live, {' '}
+                      {storylets.filter(s => s.status === 'stage').length} staging, {' '}
+                      {storylets.filter(s => s.status === 'dev').length} dev
+                    </div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">Story Arcs</div>
+                    <div className="stat-value text-secondary">{arcs.length}</div>
+                    <div className="stat-desc">Narrative structures</div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">Characters</div>
+                    <div className="stat-value text-accent">{characters.length}</div>
+                    <div className="stat-desc">
+                      {characters.filter(c => c.status === 'active').length} active, {' '}
+                      {characters.filter(c => c.importance === 'critical').length} critical
+                    </div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">Clues</div>
+                    <div className="stat-value text-info">{clues.length}</div>
+                    <div className="stat-desc">
+                      {clues.filter(c => c.isDiscovered).length} discovered, {' '}
+                      {clues.filter(c => c.status === 'resolved').length} resolved
+                    </div>
                   </div>
                 </div>
-                <div className="stat">
-                  <div className="stat-title">Clues</div>
-                  <div className="stat-value text-info">{clues.length}</div>
-                  <div className="stat-desc">
-                    {clues.filter(c => c.isDiscovered).length} discovered, {' '}
-                    {clues.filter(c => c.status === 'resolved').length} resolved
-                  </div>
-                </div>
-              </div>
+              )}
             </Card>
           </div>
         );
@@ -223,6 +277,21 @@ function App() {
           <ClueManager />
         );
 
+      case 'sandbox':
+        return (
+          <StoryletSandbox />
+        );
+
+      case 'data-manager':
+        return (
+          <DataManager />
+        );
+
+      case 'minigame-tester':
+        return (
+          <MinigameTester />
+        );
+
       default:
         return <div>Unknown view</div>;
     }
@@ -238,14 +307,27 @@ function App() {
       case 'visual-editor': return 'Visual Editor';
       case 'characters': return 'Characters';
       case 'clues': return 'Clues';
+      case 'sandbox': return 'Storylet Sandbox';
+      case 'data-manager': return 'Data Manager';
+      case 'minigame-tester': return 'Minigame Tester';
       default: return 'V13n Content Creator';
     }
   };
 
   return (
-    <MainLayout>
-      {/* Navigation Breadcrumbs */}
-      <div className="breadcrumbs text-sm mb-6">
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log errors to console in development
+        if (import.meta.env.DEV) {
+          console.error('App Error:', error, errorInfo);
+        }
+        // Here you could send errors to an error tracking service
+        // Example: window.Sentry?.captureException(error);
+      }}
+    >
+      <MainLayout>
+        {/* Navigation Breadcrumbs */}
+        <div className="breadcrumbs text-sm mb-6">
         <ul>
           <li>
             <button 
@@ -325,8 +407,18 @@ function App() {
       </div>
 
       {/* Main Content */}
-      {renderContent()}
+      <ErrorBoundary fallback={
+        <Card className="p-8 text-center">
+          <h3 className="text-lg font-semibold text-error mb-2">Component Error</h3>
+          <p className="text-base-content/70">
+            There was an error loading this component. Please try refreshing the page.
+          </p>
+        </Card>
+      }>
+        {renderContent()}
+      </ErrorBoundary>
     </MainLayout>
+    </ErrorBoundary>
   );
 }
 
