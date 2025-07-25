@@ -1,0 +1,92 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('V13n App', () => {
+  test('should load the main application', async ({ page }) => {
+    await page.goto('/');
+    
+    // Check if the main layout loads
+    await expect(page.locator('[data-testid="main-layout"]')).toBeVisible();
+    
+    // Check if navigation elements are present
+    await expect(page.locator('text=Story Arcs')).toBeVisible();
+    await expect(page.locator('text=Storylets')).toBeVisible();
+    await expect(page.locator('text=Characters')).toBeVisible();
+    await expect(page.locator('text=Clues')).toBeVisible();
+  });
+
+  test('should navigate between different sections', async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to Story Arcs
+    await page.click('text=Story Arcs');
+    await expect(page.locator('text=Arc Manager')).toBeVisible();
+    
+    // Navigate to Storylets
+    await page.click('text=Storylets');
+    await expect(page.locator('text=Advanced Storylet Creator')).toBeVisible();
+    
+    // Navigate to Characters
+    await page.click('text=Characters');
+    await expect(page.locator('text=Character Manager')).toBeVisible();
+    
+    // Navigate to Clues
+    await page.click('text=Clues');
+    await expect(page.locator('text=Clue Manager')).toBeVisible();
+  });
+
+  test('should create a new story arc', async ({ page }) => {
+    await page.goto('/');
+    await page.click('text=Story Arcs');
+    
+    // Create new arc
+    await page.click('text=Create Arc');
+    await page.fill('[data-testid="arc-name-input"]', 'Test Arc');
+    await page.fill('[data-testid="arc-description-input"]', 'A test story arc');
+    await page.click('[data-testid="save-arc-button"]');
+    
+    // Verify arc was created
+    await expect(page.locator('text=Test Arc')).toBeVisible();
+  });
+
+  test('should create a new clue', async ({ page }) => {
+    await page.goto('/');
+    await page.click('text=Clues');
+    
+    // Create new clue
+    await page.click('text=Create Clue');
+    await page.fill('[data-testid="clue-name-input"]', 'test-clue');
+    await page.fill('[data-testid="clue-title-input"]', 'Test Clue');
+    await page.fill('[data-testid="clue-description-input"]', 'A test clue for testing');
+    await page.click('[data-testid="save-clue-button"]');
+    
+    // Verify clue was created
+    await expect(page.locator('text=Test Clue')).toBeVisible();
+  });
+
+  test('should open visual editor', async ({ page }) => {
+    await page.goto('/');
+    await page.click('text=Story Arcs');
+    
+    // Assuming there's a visual editor button or link
+    await page.click('[data-testid="visual-editor-button"]');
+    
+    // Check if visual editor loads
+    await expect(page.locator('[data-testid="visual-editor-canvas"]')).toBeVisible();
+    await expect(page.locator('[data-testid="visual-editor-toolbar"]')).toBeVisible();
+  });
+
+  test('should test minigames', async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to minigame tester if accessible via menu
+    await page.click('text=Testing');
+    await page.click('text=Minigame Tester');
+    
+    // Check if minigame tester loads
+    await expect(page.locator('text=Minigame Tester')).toBeVisible();
+    
+    // Try to start a memory card game
+    await page.click('text=Memory Card Game');
+    await expect(page.locator('[data-testid="minigame-container"]')).toBeVisible();
+  });
+});
